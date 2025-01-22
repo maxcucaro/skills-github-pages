@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVENT TRACK - Giacenze Inventario</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/table.css">
+    <link rel="stylesheet" href="css/search.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>EVENT TRACK</h1>
+            <p class="tagline">Advanced Solution for Total Control</p>
+        </div>
+    </header>
+
+    <nav class="nav">
+        <div class="nav-container">
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="schede-lavori.html">Schede Lavori</a></li>
+                <li><a href="giacenze.html" class="active">Giacenze Inventario</a></li>
+                <li><a href="pages/workspace/schede/liste-aperte.html">Workspace</a></li>
+                <li><a href="impostazioni.html">Impostazioni</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="header-actions">
+            <h2>Giacenze Inventario</h2>
+            <button onclick="window.downloadInventario()" class="button download-button">
+                Scarica Inventario
+            </button>
+        </div>
+        <p class="section-description">Controllo completo dell'inventario e delle giacenze di magazzino</p>
+
+        <!-- Search Bar -->
+        <div class="search-bar">
+            <input 
+                type="text" 
+                id="searchInput" 
+                placeholder="Cerca per codice, descrizione, categoria..."
+                class="search-input"
+            >
+            <select id="searchFilter" class="search-filter">
+                <option value="all">Tutti i campi</option>
+                <option value="cod">Codice</option>
+                <option value="descrizione">Descrizione</option>
+                <option value="categoria">Categoria</option>
+                <option value="ubicazione">Ubicazione</option>
+            </select>
+            <select id="settoreFilter" class="search-filter">
+                <option value="all">Tutti i settori</option>
+            </select>
+        </div>
+
+        <div id="loadingIndicator" class="loading-indicator">Caricamento in corso...</div>
+
+        <div id="inventoryContainer">
+            <!-- Il contenuto dell'inventario verrà caricato dinamicamente -->
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2025 Control Stage Event Track - Creato e Sviluppato da Massimiliano Cucaro - Tutti i diritti riservati</p>
+    </footer>
+
+    <script type="module">
+        import { inventoryService } from './js/services/inventoryService.js';
+        import { SETTORI } from './js/utils/constants.js';
+        import { downloadExcel } from './js/utils/excelUtils.js';
+
+        let allArticoli = {};
+
+        function filterArticoli(searchText, searchField, selectedSettore) {
+            const filteredData = {};
+            
+            Object.entries(allArticoli).forEach(([settore, articoli]) => {
+                if (selectedSettore !== 'all' && settore !== selectedSettore) return;
+                
+                const filteredArticoli = articoli.filter(articolo => {
+                    if (!searchText) return true;
+                    
+                    const searchLower = searchText.toLowerCase();
+                    if (searchField === 'all') {
+                        return (
+                            articolo.cod?.toLowerCase().includes(searchLower) ||
+                            articolo.descrizione?.toLowerCase().includes(searchLower) ||
+                            articolo.categoria?.toLowerCase().includes(searchLower) ||
+                            articolo.ubicazione?.toLowerCase().includes(searchLower)
+                        );
+                    }
+                    
+                    return articolo[searchField]?.toLowerCase().includes(searchLower);
+                });
+
+                if (filteredArticoli.length > 0) {
+                    filteredData[settore] = filteredArticoli;
+                }
+            });
+
+            return filteredData;
+        }
+
+        function updateDisplay(filteredData) {
+            const container = document.getElementById('inventoryContainer');
+            let html = '';
+
+            for (const [settore, articoli] of Object.entries(filteredData)) {
+                if (SETTORI[settore]) {
+                    // Group articles by category
+                    const articoliByCategoria = {};
+                    articoli.forEach(articolo => {
+                        if (!articoliByCategoria[articolo.categoria]) {
+                            articoliByCategoria[articolo.categoria] = [];
+                        }
+                        articoliByCategoria[articolo.categoria].push(articolo);
+                    });
+
+                    // Create section for each settore
+                    html += `
+                        <div class="inventory-section">
+                            <h3>${SETTORI[settore].nome}</h3>`;
+
+                    // Create tables for each category
+                    Object.entries(articoliByCategoria).forEach(([categoria, items]) => {
+                        html += `
+                            <h4 class="category-title">${categoria}</h4>
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Codice</th>
+                                            <th>Descrizione</th>
+                                            <th>Quantità</th>
+                                            <th>Ubicazione</th>
+                                            <th>Stato</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${items.map(articolo => `
+                                            <tr>
+                                                <td>${articolo.cod || '-'}</td>
+                                                <td>${articolo.descrizione || '-'}</td>
+                                                <td>${articolo.quantita || 0}</td>
+                                                <td>${articolo.ubicazione || '-'}</td>
+                                                <td class="${articolo.attivo ? 'status-active' : 'status-inactive'}">
+                                                    ${articolo.attivo ? 'Attivo' : 'Inattivo'}
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>`;
+                    });
+
+                    html += '</div>';
+                }
+            }
+
+            container.innerHTML = html || '<p class="no-data">Nessun articolo trovato</p>';
+        }
+
+        async function loadInventory() {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const settoreFilter = document.getElementById('settoreFilter');
+
+            try {
+                const result = await inventoryService.getInventoryByDate();
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+
+                allArticoli = result.data;
+
+                // Populate settore filter
+                Object.entries(SETTORI).forEach(([key, value]) => {
+                    const option = document.createElement('option');
+                    option.value = key;
+                    option.textContent = value.nome;
+                    settoreFilter.appendChild(option);
+                });
+
+                updateDisplay(allArticoli);
+            } catch (error) {
+                console.error('Errore durante il caricamento:', error);
+                document.getElementById('inventoryContainer').innerHTML = `
+                    <div class="error-message">
+                        Errore durante il caricamento dell'inventario: ${error.message}
+                    </div>
+                `;
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        }
+
+        window.downloadInventario = async () => {
+            try {
+                const data = [];
+                
+                // Prepara i dati per l'export
+                Object.entries(allArticoli).forEach(([settore, articoli]) => {
+                    articoli.forEach(articolo => {
+                        data.push({
+                            Settore: SETTORI[settore].nome,
+                            Categoria: articolo.categoria,
+                            Codice: articolo.cod,
+                            Descrizione: articolo.descrizione,
+                            Quantità: articolo.quantita,
+                            Ubicazione: articolo.ubicazione || '',
+                            Stato: articolo.attivo ? 'Attivo' : 'Inattivo'
+                        });
+                    });
+                });
+
+                // Scarica il file Excel
+                await downloadExcel(data, 'Inventario');
+            } catch (error) {
+                console.error('Errore durante il download:', error);
+                alert('Errore durante il download dell\'inventario: ' + error.message);
+            }
+        };
+
+        // Setup search handlers
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const searchText = e.target.value;
+            const searchField = document.getElementById('searchFilter').value;
+            const selectedSettore = document.getElementById('settoreFilter').value;
+            const filteredData = filterArticoli(searchText, searchField, selectedSettore);
+            updateDisplay(filteredData);
+        });
+
+        document.getElementById('searchFilter').addEventListener('change', (e) => {
+            const searchText = document.getElementById('searchInput').value;
+            const searchField = e.target.value;
+            const selectedSettore = document.getElementById('settoreFilter').value;
+            const filteredData = filterArticoli(searchText, searchField, selectedSettore);
+            updateDisplay(filteredData);
+        });
+
+        document.getElementById('settoreFilter').addEventListener('change', (e) => {
+            const searchText = document.getElementById('searchInput').value;
+            const searchField = document.getElementById('searchFilter').value;
+            const selectedSettore = e.target.value;
+            const filteredData = filterArticoli(searchText, searchField, selectedSettore);
+            updateDisplay(filteredData);
+        });
+
+        document.addEventListener('DOMContentLoaded', loadInventory);
+    </script>
+
+    <style>
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .download-button {
+            background-color: #10b981;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .download-button:hover {
+            background-color: #059669;
+        }
+
+        .inventory-section {
+            margin-bottom: 3rem;
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .inventory-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .inventory-section h3 {
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+            font-size: 1.25rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--accent-color);
+        }
+
+        .category-title {
+            margin: 1.5rem 0 1rem;
+            color: var(--text-color);
+            font-size: 1.1rem;
+            padding-left: 1rem;
+            border-left: 3px solid var(--accent-color);
+        }
+
+        .table-container {
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+
+        .table-container:last-child {
+            margin-bottom: 0;
+        }
+
+        .data-table {
+            width: 100%;
+            margin: 0;
+        }
+
+        .data-table th {
+            background: var(--background-color);
+            font-weight: 600;
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .data-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .data-table tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .status-active { color: #10b981; }
+        .status-inactive { color: #ef4444; }
+
+        .no-data {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+            font-style: italic;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .error-message {
+            color: #ef4444;
+            text-align: center;
+            padding: 1rem;
+            background: #fee2e2;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .loading-indicator {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+    </style>
+</body>
+</html>
