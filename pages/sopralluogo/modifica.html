@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVENT TRACK - Modifica Sopralluogo</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/form.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>EVENT TRACK</h1>
+            <p class="tagline">Advanced Solution for Total Control</p>
+        </div>
+    </header>
+
+    <nav class="nav">
+        <div class="nav-container">
+            <ul>
+                <li><a href="../../index.html">Home</a></li>
+                <li><a href="../../sopralluogo.html">Sopralluogo</a></li>
+                <li><a href="../../schede-lavori.html">Schede Lavori</a></li>
+                <li><a href="../../giacenze.html">Giacenze Inventario</a></li>
+                <li><a href="../../pages/workspace/schede/liste-aperte.html">Workspace</a></li>
+                <li><a href="../../impostazioni.html">Impostazioni</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div id="loadingIndicator" class="loading-indicator">Caricamento in corso...</div>
+        
+        <div id="formContainer" style="display: none;">
+            <div class="header-actions">
+                <h2>Modifica Sopralluogo <span id="codiceSopralluogo"></span></h2>
+                <div class="status-badge" id="statoSopralluogo"></div>
+            </div>
+
+            <!-- Il form verrà inserito qui -->
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2025 Control Stage Event Track - Creato e Sviluppato da Massimiliano Cucaro - Tutti i diritti riservati</p>
+    </footer>
+
+    <script type="module">
+        import { sopralluogoService } from '../../js/services/sopralluogoService.js';
+        import { tipologieLavoroService } from '../../js/services/tipologieLavoroService.js';
+        import { anagraficheService } from '../../js/services/anagraficheService.js';
+        import { createShortcutButtons } from '../../js/components/schedaLavoro/ShortcutButtons.js';
+
+        let sopralluogoCorrente = null;
+
+        async function loadSopralluogo() {
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+            
+            if (!id) {
+                alert('ID sopralluogo non valido');
+                history.back();
+                return;
+            }
+
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const formContainer = document.getElementById('formContainer');
+            
+            try {
+                const result = await sopralluogoService.getSopralluogoById(id);
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+
+                sopralluogoCorrente = result.data;
+
+                // Display header info
+                document.getElementById('codiceSopralluogo').textContent = sopralluogoCorrente.codice;
+                const statoElement = document.getElementById('statoSopralluogo');
+                statoElement.textContent = sopralluogoCorrente.stato;
+                statoElement.className = `status-badge status-${sopralluogoCorrente.stato.toLowerCase()}`;
+
+                // Load form
+                await initForm();
+                
+                // Populate form with data
+                populateForm(sopralluogoCorrente);
+
+                loadingIndicator.style.display = 'none';
+                formContainer.style.display = 'block';
+            } catch (error) {
+                console.error('Errore durante il caricamento:', error);
+                alert('Errore durante il caricamento del sopralluogo: ' + error.message);
+                history.back();
+            }
+        }
+
+        async function initForm() {
+            // Clone the form from nuovo.html
+            const response = await fetch('nuovo.html');
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const form = doc.getElementById('sopralluogoForm');
+            
+            if (!form) {
+                throw new Error('Form template non trovato');
+            }
+
+            // Insert form into container
+            const formContainer = document.getElementById('formContainer');
+            formContainer.appendChild(form);
+
+            // Setup form handlers
+            setupFormHandlers(form);
+        }
+
+        function populateForm(data) {
+            const form = document.getElementById('sopralluogoForm');
+            if (!form) return;
+
+            // Populate all form fields
+            Object.entries(data).forEach(([key, value]) => {
+                const element = form.elements[key];
+                if (element) {
+                    if (element.type === 'checkbox') {
+                        element.checked = value;
+                    } else if (element.type === 'select-one') {
+                        element.value = value;
+                        // Trigger change event for select fields
+                        element.dispatchEvent(new Event('change'));
+                    } else {
+                        element.value = value || '';
+                    }
+                }
+            });
+        }
+
+        async function setupFormHandlers(form) {
+            try {
+                // Load tipi lavoro
+                const tipoSelect = form.tipo_lavoro;
+                const result = await tipologieLavoroService.getTipologieAttive();
+                if (!result.success) throw new Error(result.error);
+
+                result.data.forEach(({ tipo }) => {
+                    const option = document.createElement('option');
+                    option.value = tipo;
+                    switch (tipo) {
+                        case 'INTERNO':
+                            option.textContent = 'Lavoro Interno';
+                            break;
+                        case 'NOLEGGIO':
+                            option.textContent = 'Noleggio';
+                            break;
+                        case 'CONTOVISIONE':
+                            option.textContent = 'Contovisione';
+                            break;
+                        case 'ASSISTENZA':
+                            option.textContent = 'Assistenza Tecnica';
+                            break;
+                        case 'RESO_FORNITORE':
+                            option.textContent = 'Reso a Fornitore';
+                            break;
+                        default:
+                            option.textContent = tipo;
+                    }
+                    tipoSelect.appendChild(option);
+                });
+
+                // Setup tipo lavoro change handler
+                const produzioneField = form.querySelector('[data-field="produzione_id"]');
+                const clienteField = form.querySelector('[data-field="cliente_id"]');
+                const catField = form.querySelector('[data-field="cat_id"]');
+                const fornitoreField = form.querySelector('[data-field="fornitore_id"]');
+
+                tipoSelect.addEventListener('change', async (e) => {
+                    // Hide all fields
+                    [produzioneField, clienteField, catField, fornitoreField].forEach(field => {
+                        if (field) {
+                            field.style.display = 'none';
+                            const select = field.querySelector('select');
+                            if (select) select.required = false;
+                        }
+                    });
+
+                    // Show shortcut buttons
+                    const tipo = e.target.value;
+                    const shortcutContainer = document.getElementById('shortcutButtons');
+                    if (shortcutContainer) {
+                        shortcutContainer.innerHTML = createShortcutButtons(tipo);
+                    }
+
+                    // Show appropriate field based on tipo
+                    switch (tipo) {
+                        case 'INTERNO':
+                            if (produzioneField) {
+                                produzioneField.style.display = 'block';
+                                const select = produzioneField.querySelector('select');
+                                if (select) {
+                                    select.required = true;
+                                    await loadProduzioni(select);
+                                }
+                            }
+                            break;
+                        case 'NOLEGGIO':
+                        case 'CONTOVISIONE':
+                            if (clienteField) {
+                                clienteField.style.display = 'block';
+                                const select = clienteField.querySelector('select');
+                                if (select) {
+                                    select.required = true;
+                                    await loadClienti(select);
+                                }
+                            }
+                            break;
+                        case 'ASSISTENZA':
+                            if (catField) {
+                                catField.style.display = 'block';
+                                const select = catField.querySelector('select');
+                                if (select) {
+                                    select.required = true;
+                                    await loadCAT(select);
+                                }
+                            }
+                            break;
+                        case 'RESO_FORNITORE':
+                            if (fornitoreField) {
+                                fornitoreField.style.display = 'block';
+                                const select = fornitoreField.querySelector('select');
+                                if (select) {
+                                    select.required = true;
+                                    await loadFornitori(select);
+                                }
+                            }
+                            break;
+                    }
+                });
+
+                // Handle form submission
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    
+                    try {
+                        const formData = new FormData(e.target);
+                        const result = await sopralluogoService.updateSopralluogo(
+                            sopralluogoCorrente.id,
+                            Object.fromEntries(formData)
+                        );
+
+                        if (result.success) {
+                            alert('Sopralluogo aggiornato con successo!');
+                            window.location.href = `visualizza.html?id=${sopralluogoCorrente.id}`;
+                        } else {
+                            throw new Error(result.error);
+                        }
+                    } catch (error) {
+                        alert('Errore durante il salvataggio: ' + error.message);
+                    }
+                };
+
+            } catch (error) {
+                console.error('Errore durante l\'inizializzazione:', error);
+                alert('Errore durante l\'inizializzazione del form: ' + error.message);
+            }
+        }
+
+        // Helper functions to load reference data
+        async function loadProduzioni(select) {
+            try {
+                const result = await anagraficheService.getProduzioni();
+                if (result.success) {
+                    select.innerHTML = '<option value="">Seleziona produzione</option>';
+                    result.data.forEach(prod => {
+                        if (prod.attivo) {
+                            const option = document.createElement('option');
+                            option.value = prod.id;
+                            option.textContent = prod.nome;
+                            select.appendChild(option);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Errore caricamento produzioni:', error);
+            }
+        }
+
+        async function loadClienti(select) {
+            try {
+                const result = await anagraficheService.getClienti();
+                if (result.success) {
+                    select.innerHTML = '<option value="">Seleziona cliente</option>';
+                    result.data.forEach(cliente => {
+                        if (cliente.attivo) {
+                            const option = document.createElement('option');
+                            option.value = cliente.id;
+                            option.textContent = cliente.ragione_sociale;
+                            select.appendChild(option);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Errore caricamento clienti:', error);
+            }
+        }
+
+        async function loadCAT(select) {
+            try {
+                const result = await anagraficheService.getCAT();
+                if (result.success) {
+                    select.innerHTML = '<option value="">Seleziona CAT</option>';
+                    result.data.forEach(cat => {
+                        if (cat.attivo) {
+                            const option = document.createElement('option');
+                            option.value = cat.id;
+                            option.textContent = `${cat.nome} ${cat.cognome}`;
+                            select.appendChild(option);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Errore caricamento CAT:', error);
+            }
+        }
+
+        async function loadFornitori(select) {
+            try {
+                const result = await anagraficheService.getFornitori();
+                if (result.success) {
+                    select.innerHTML = '<option value="">Seleziona fornitore</option>';
+                    result.data.forEach(fornitore => {
+                        if (fornitore.attivo) {
+                            const option = document.createElement('option');
+                            option.value = fornitore.id;
+                            option.textContent = fornitore.ragione_sociale;
+                            select.appendChild(option);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Errore caricamento fornitori:', error);
+            }
+        }
+
+        // Load sopralluogo on page load
+        document.addEventListener('DOMContentLoaded', loadSopralluogo);
+    </script>
+
+    <style>
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+        }
+
+        .status-bozza { background: #fef3c7; color: #92400e; }
+        .status-completato { background: #d1fae5; color: #065f46; }
+        .status-annullato { background: #fee2e2; color: #991b1b; }
+
+        .form-section {
+            margin-bottom: 2rem;
+            padding: 2rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-section h3 {
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+            font-size: 1.25rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--accent-color);
+        }
+
+        .form-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+        }
+
+        .required-field::after {
+            content: "*";
+            color: #ef4444;
+            margin-left: 0.25rem;
+        }
+
+        .tipo-lavoro-container {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .tipo-lavoro-container select {
+            flex: 1;
+        }
+
+        .shortcut-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .shortcut-buttons .button {
+            white-space: nowrap;
+        }
+    </style>
+</body>
+</html>

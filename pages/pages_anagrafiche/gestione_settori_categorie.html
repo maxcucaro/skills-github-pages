@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVENT TRACK - Gestione Settori e Categorie</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/table.css">
+    <link rel="stylesheet" href="../../css/modal.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>EVENT TRACK</h1>
+            <p class="tagline">Advanced Solution for Total Control</p>
+        </div>
+    </header>
+
+    <nav class="nav">
+        <div class="nav-container">
+            <ul>
+                <li><a href="../../index.html">Home</a></li>
+                <li><a href="../../schede-lavori.html">Schede Lavori</a></li>
+                <li><a href="../../giacenze.html">Giacenze Inventario</a></li>
+                <li><a href="../../impostazioni.html">Impostazioni</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <h2>Gestione Settori e Categorie</h2>
+        <p class="section-description">Gestione delle categorie per ogni settore</p>
+
+        <div class="actions-container" style="margin: 2rem 0; display: flex; gap: 1rem;">
+            <button onclick="window.handleAggiungiCategoria()" class="button">
+                Aggiungi Categoria
+            </button>
+            <button onclick="history.back()" class="button">
+                Torna Indietro
+            </button>
+        </div>
+
+        <div id="loadingIndicator" class="loading-indicator">Caricamento in corso...</div>
+        
+        <div class="table-container" style="display: none;" id="tableContainer">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Settore</th>
+                        <th>Categoria</th>
+                        <th>Stato</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody id="categorieTable">
+                    <!-- La tabella verrà popolata dinamicamente -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2025 Control Stage Event Track - Creato e Sviluppato da Massimiliano Cucaro - Tutti i diritti riservati</p>
+    </footer>
+
+    <script type="module">
+        import { settoriService } from '../../js/services/settoriService.js';
+        import { createCategoryModal } from '../../js/modal/categoryModal.js';
+
+        let isInitialized = false;
+
+        async function initializePage() {
+            if (isInitialized) return;
+            
+            createCategoryModal();
+            
+            const closeBtn = document.querySelector('.close-modal');
+            if (closeBtn) {
+                closeBtn.onclick = () => {
+                    const modal = document.getElementById('categoryModal');
+                    if (modal) modal.style.display = 'none';
+                };
+            }
+
+            await loadCategorie();
+            
+            isInitialized = true;
+        }
+
+        async function loadCategorie() {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const tableContainer = document.getElementById('tableContainer');
+            const tableBody = document.getElementById('categorieTable');
+            
+            try {
+                loadingIndicator.style.display = 'block';
+                tableContainer.style.display = 'none';
+
+                const result = await settoriService.getSettoriCategorie();
+                
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+
+                if (!result.data || result.data.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="no-data">
+                                Nessuna categoria trovata
+                            </td>
+                        </tr>`;
+                } else {
+                    tableBody.innerHTML = result.data.map(categoria => `
+                        <tr>
+                            <td>${categoria.settore}</td>
+                            <td>${categoria.categoria}</td>
+                            <td class="${categoria.attivo ? 'status-active' : 'status-inactive'}">
+                                ${categoria.attivo ? 'Attiva' : 'Inattiva'}
+                            </td>
+                            <td>
+                                <button onclick="window.handleModificaCategoria('${categoria.id}')" class="button">
+                                    Modifica
+                                </button>
+                                <button onclick="window.handleToggleStatoCategoria('${categoria.id}', ${categoria.attivo})" class="button">
+                                    ${categoria.attivo ? 'Disattiva' : 'Attiva'}
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Errore durante il caricamento:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="error-message">
+                            ${error.message || 'Errore durante il caricamento delle categorie'}
+                        </td>
+                    </tr>`;
+            } finally {
+                if (loadingIndicator) loadingIndicator.style.display = 'none';
+                if (tableContainer) tableContainer.style.display = 'block';
+            }
+        }
+
+        window.handleAggiungiCategoria = async () => {
+            const modal = document.getElementById('categoryModal');
+            const form = document.getElementById('categoryForm');
+            
+            if (!modal || !form) {
+                console.error('Modal o form non trovati');
+                return;
+            }
+
+            form.reset();
+            
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = {
+                    settore: form.settore.value,
+                    categoria: form.categoria.value,
+                    attivo: form.attivo.checked
+                };
+                
+                try {
+                    const result = await settoriService.addCategoria(
+                        formData.settore,
+                        formData.categoria,
+                        formData.attivo
+                    );
+                    if (result.success) {
+                        modal.style.display = 'none';
+                        await loadCategorie();
+                    } else {
+                        throw new Error(result.error);
+                    }
+                } catch (error) {
+                    alert('Errore durante il salvataggio: ' + error.message);
+                }
+            };
+            
+            modal.style.display = 'block';
+        };
+
+        window.handleModificaCategoria = async (id) => {
+            const modal = document.getElementById('categoryModal');
+            const form = document.getElementById('categoryForm');
+            
+            if (!modal || !form) {
+                console.error('Modal o form non trovati');
+                return;
+            }
+
+            try {
+                const result = await settoriService.getCategoriaById(id);
+                if (!result.success) throw new Error(result.error);
+
+                const categoria = result.data;
+                if (!categoria) throw new Error('Categoria non trovata');
+
+                form.settore.value = categoria.settore;
+                form.categoria.value = categoria.categoria;
+                form.attivo.checked = categoria.attivo;
+                
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    try {
+                        const result = await settoriService.updateCategoria(id, form.categoria.value);
+                        if (result.success) {
+                            modal.style.display = 'none';
+                            await loadCategorie();
+                        } else {
+                            throw new Error(result.error);
+                        }
+                    } catch (error) {
+                        alert('Errore durante l\'aggiornamento: ' + error.message);
+                    }
+                };
+                
+                modal.style.display = 'block';
+            } catch (error) {
+                alert('Errore durante il caricamento della categoria: ' + error.message);
+            }
+        };
+
+        window.handleToggleStatoCategoria = async (id, statoAttuale) => {
+            if (confirm(`Sei sicuro di voler ${statoAttuale ? 'disattivare' : 'attivare'} questa categoria?`)) {
+                try {
+                    const result = await settoriService.toggleStatoCategoria(id, !statoAttuale);
+                    if (result.success) {
+                        await loadCategorie();
+                    } else {
+                        throw new Error(result.error);
+                    }
+                } catch (error) {
+                    alert('Errore durante la modifica dello stato: ' + error.message);
+                }
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', initializePage);
+    </script>
+
+    <style>
+        .loading-indicator {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .status-active { color: #10b981; }
+        .status-inactive { color: #ef4444; }
+        
+        .error-message {
+            color: #ef4444;
+            text-align: center;
+        }
+    </style>
+</body>
+</html>

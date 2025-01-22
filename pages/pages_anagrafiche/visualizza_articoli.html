@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVENT TRACK - Visualizza Articoli</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/table.css">
+    <link rel="stylesheet" href="../../css/search.css">
+    <link rel="stylesheet" href="../../css/modal.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>EVENT TRACK</h1>
+            <p class="tagline">Advanced Solution for Total Control</p>
+        </div>
+    </header>
+
+    <nav class="nav">
+        <div class="nav-container">
+            <ul>
+                <li><a href="../../index.html">Home</a></li>
+                <li><a href="../../schede-lavori.html">Schede Lavori</a></li>
+                <li><a href="../../giacenze.html">Giacenze Inventario</a></li>
+                <li><a href="../../pages/workspace/schede/liste-aperte.html">Workspace</a></li>
+                <li><a href="../../impostazioni.html">Impostazioni</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <h2 id="titoloLista">Visualizza Articoli</h2>
+        <p id="descrizioneSettore" class="section-description">Elenco completo degli articoli</p>
+
+        <div class="search-bar">
+            <input 
+                type="text" 
+                id="searchInput" 
+                placeholder="Cerca per codice, descrizione, categoria..."
+                class="search-input"
+            >
+            <select id="searchFilter" class="search-filter">
+                <option value="all">Tutti i campi</option>
+                <option value="cod">Codice</option>
+                <option value="descrizione">Descrizione</option>
+                <option value="categoria">Categoria</option>
+                <option value="ubicazione">Ubicazione</option>
+            </select>
+        </div>
+
+        <div id="loadingIndicator" class="loading-indicator">Caricamento in corso...</div>
+        
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Codice</th>
+                        <th>Descrizione</th>
+                        <th>Categoria</th>
+                        <th>Quantità</th>
+                        <th>Ubicazione</th>
+                        <th>Stato</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody id="articoliTable">
+                    <!-- La tabella verrà popolata dinamicamente -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="button-container" style="margin-top: 2rem;">
+            <button onclick="history.back()" class="button">Torna Indietro</button>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2025 Control Stage Event Track - Creato e Sviluppato da Massimiliano Cucaro - Tutti i diritti riservati</p>
+    </footer>
+
+    <script type="module">
+        import { articoliService } from '../../js/services/articoliService.js';
+        import { settoriService } from '../../js/services/settoriService.js';
+        import { createArticoloModal } from '../../js/modal/articoloModal.js';
+        import { SETTORI } from '../../js/utils/constants.js';
+
+        let currentArticoli = [];
+        let currentSettore = '';
+
+        function filterArticoli(searchText, searchField) {
+            if (!searchText) return currentArticoli;
+            
+            const searchLower = searchText.toLowerCase();
+            return currentArticoli.filter(articolo => {
+                if (searchField === 'all') {
+                    return (
+                        articolo.cod?.toLowerCase().includes(searchLower) ||
+                        articolo.descrizione?.toLowerCase().includes(searchLower) ||
+                        articolo.categoria?.toLowerCase().includes(searchLower) ||
+                        articolo.ubicazione?.toLowerCase().includes(searchLower)
+                    );
+                }
+                return articolo[searchField]?.toString().toLowerCase().includes(searchLower);
+            });
+        }
+
+        async function loadArticoli() {
+            const params = new URLSearchParams(window.location.search);
+            const settore = params.get('settore')?.toUpperCase();
+            currentSettore = settore;
+            
+            if (!settore || !SETTORI[settore]) {
+                alert('Settore non specificato');
+                history.back();
+                return;
+            }
+
+            const settoreInfo = SETTORI[settore];
+            document.title = `EVENT TRACK - Visualizza Articoli ${settoreInfo.nome}`;
+            document.getElementById('titoloLista').textContent = `Visualizza Articoli ${settoreInfo.nome}`;
+            document.getElementById('descrizioneSettore').textContent = 
+                `Elenco completo degli articoli ${settoreInfo.nome.toLowerCase()}`;
+
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const tableBody = document.getElementById('articoliTable');
+            
+            try {
+                const result = await articoliService.getArticoli(settore);
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+
+                currentArticoli = result.data;
+
+                // Raggruppa gli articoli per categoria
+                const articoliByCategoria = {};
+                currentArticoli.forEach(articolo => {
+                    if (!articoliByCategoria[articolo.categoria]) {
+                        articoliByCategoria[articolo.categoria] = [];
+                    }
+                    articoliByCategoria[articolo.categoria].push(articolo);
+                });
+
+                // Ordina le categorie alfabeticamente
+                const categorieOrdinate = Object.keys(articoliByCategoria).sort();
+
+                let html = '';
+                let isFirstCategory = true;
+
+                categorieOrdinate.forEach(categoria => {
+                    // Ordina gli articoli all'interno della categoria per descrizione
+                    const articoli = articoliByCategoria[categoria].sort((a, b) => 
+                        a.descrizione.localeCompare(b.descrizione)
+                    );
+
+                    // Aggiungi separatore tra categorie
+                    if (!isFirstCategory) {
+                        html += `
+                            <tr class="category-separator">
+                                <td colspan="7" class="category-header">${categoria}</td>
+                            </tr>`;
+                    } else {
+                        html += `
+                            <tr class="category-header-first">
+                                <td colspan="7" class="category-header">${categoria}</td>
+                            </tr>`;
+                        isFirstCategory = false;
+                    }
+
+                    // Aggiungi gli articoli della categoria
+                    articoli.forEach(articolo => {
+                        html += `
+                            <tr>
+                                <td>${articolo.cod || '-'}</td>
+                                <td>${articolo.descrizione || '-'}</td>
+                                <td>${articolo.categoria || '-'}</td>
+                                <td>${articolo.quantita || 0}</td>
+                                <td>${articolo.ubicazione || '-'}</td>
+                                <td class="${articolo.attivo ? 'status-active' : 'status-inactive'}">
+                                    ${articolo.attivo ? 'Attivo' : 'Inattivo'}
+                                </td>
+                                <td>
+                                    <button onclick="window.modificaArticolo('${articolo.cod}')" class="button">
+                                        Modifica
+                                    </button>
+                                    <button onclick="window.toggleStato('${articolo.cod}', ${articolo.attivo})" class="button">
+                                        ${articolo.attivo ? 'Disattiva' : 'Attiva'}
+                                    </button>
+                                </td>
+                            </tr>`;
+                    });
+                });
+
+                tableBody.innerHTML = html || `
+                    <tr>
+                        <td colspan="7" class="no-data">
+                            Nessun articolo trovato
+                        </td>
+                    </tr>`;
+
+            } catch (error) {
+                console.error('Errore durante il caricamento:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="error-message">
+                            ${error.message || 'Errore durante il caricamento degli articoli'}
+                        </td>
+                    </tr>`;
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        }
+
+        window.modificaArticolo = async (cod) => {
+            const modal = createArticoloModal();
+            const form = modal.querySelector('#articoloForm');
+            
+            try {
+                // Carica le categorie del settore
+                const categorieResult = await settoriService.getCategorieBySettore(currentSettore);
+                if (!categorieResult.success) throw new Error(categorieResult.error);
+
+                const categorieSelect = form.categoria;
+                categorieSelect.innerHTML = '<option value="">Seleziona categoria</option>';
+                categorieResult.data.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.categoria;
+                    option.textContent = cat.categoria;
+                    categorieSelect.appendChild(option);
+                });
+
+                // Trova l'articolo corrente
+                const articolo = currentArticoli.find(a => a.cod === cod);
+                if (!articolo) throw new Error('Articolo non trovato');
+
+                // Popola il form
+                form.descrizione.value = articolo.descrizione;
+                form.categoria.value = articolo.categoria;
+                form.quantita.value = articolo.quantita || 0;
+                form.ubicazione.value = articolo.ubicazione || '';
+                form.attivo.checked = articolo.attivo;
+
+                // Gestisci il submit del form
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    const formData = {
+                        descrizione: form.descrizione.value,
+                        categoria: form.categoria.value,
+                        quantita: parseInt(form.quantita.value),
+                        ubicazione: form.ubicazione.value,
+                        attivo: form.attivo.checked
+                    };
+
+                    try {
+                        const result = await articoliService.updateArticolo(currentSettore, cod, formData);
+                        if (result.success) {
+                            modal.style.display = 'none';
+                            await loadArticoli();
+                        } else {
+                            throw new Error(result.error);
+                        }
+                    } catch (error) {
+                        alert('Errore durante l\'aggiornamento: ' + error.message);
+                    }
+                };
+
+                modal.style.display = 'block';
+            } catch (error) {
+                alert('Errore durante il caricamento dell\'articolo: ' + error.message);
+            }
+        };
+
+        window.toggleStato = async (cod, statoAttuale) => {
+            if (confirm(`Sei sicuro di voler ${statoAttuale ? 'disattivare' : 'attivare'} questo articolo?`)) {
+                try {
+                    const result = await articoliService.toggleStato(currentSettore, cod, !statoAttuale);
+                    if (result.success) {
+                        await loadArticoli();
+                    } else {
+                        throw new Error(result.error);
+                    }
+                } catch (error) {
+                    alert('Errore durante la modifica dello stato: ' + error.message);
+                }
+            }
+        };
+
+        // Setup search handlers
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const searchText = e.target.value;
+            const searchField = document.getElementById('searchFilter').value;
+            const filteredArticoli = filterArticoli(searchText, searchField);
+            loadArticoli(filteredArticoli);
+        });
+
+        document.getElementById('searchFilter').addEventListener('change', (e) => {
+            const searchText = document.getElementById('searchInput').value;
+            const searchField = e.target.value;
+            const filteredArticoli = filterArticoli(searchText, searchField);
+            loadArticoli(filteredArticoli);
+        });
+
+        // Carica gli articoli all'avvio
+        document.addEventListener('DOMContentLoaded', loadArticoli);
+    </script>
+
+    <style>
+        .loading-indicator {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .status-active { color: #10b981; }
+        .status-inactive { color: #ef4444; }
+        
+        .error-message {
+            color: #ef4444;
+            text-align: center;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+            font-style: italic;
+        }
+
+        .category-separator {
+            border-top: 20px solid var(--background-color);
+        }
+
+        .category-header {
+            background: var(--accent-color);
+            color: white;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            text-align: left;
+        }
+
+        .category-header-first td {
+            background: var(--accent-color);
+            color: white;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            text-align: left;
+        }
+
+        .button-container {
+            text-align: center;
+        }
+    </style>
+</body>
+</html>

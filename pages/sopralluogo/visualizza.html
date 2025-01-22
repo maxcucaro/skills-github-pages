@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVENT TRACK - Visualizza Sopralluogo</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/table.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>EVENT TRACK</h1>
+            <p class="tagline">Advanced Solution for Total Control</p>
+        </div>
+    </header>
+
+    <nav class="nav">
+        <div class="nav-container">
+            <ul>
+                <li><a href="../../index.html">Home</a></li>
+                <li><a href="../../sopralluogo.html">Sopralluogo</a></li>
+                <li><a href="../../schede-lavori.html">Schede Lavori</a></li>
+                <li><a href="../../giacenze.html">Giacenze Inventario</a></li>
+                <li><a href="../../pages/workspace/schede/liste-aperte.html">Workspace</a></li>
+                <li><a href="../../impostazioni.html">Impostazioni</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div id="loadingIndicator" class="loading-indicator">Caricamento in corso...</div>
+        
+        <div id="sopralluogoContainer" style="display: none;">
+            <div class="header-actions">
+                <h2>Sopralluogo <span id="codiceSopralluogo"></span></h2>
+                <div class="status-badge" id="statoSopralluogo"></div>
+            </div>
+
+            <div class="sopralluogo-details">
+                <!-- Dati Evento -->
+                <div class="info-section">
+                    <h3>Dati Evento</h3>
+                    <table class="details-table">
+                        <tr>
+                            <th>Nome Evento:</th>
+                            <td id="eventoNome"></td>
+                        </tr>
+                        <tr>
+                            <th>Tipo Lavoro:</th>
+                            <td id="tipoLavoro"></td>
+                        </tr>
+                        <tr>
+                            <th>Riferimento:</th>
+                            <td id="riferimento"></td>
+                        </tr>
+                        <tr>
+                            <th>Date:</th>
+                            <td id="date"></td>
+                        </tr>
+                        <tr>
+                            <th>Luogo:</th>
+                            <td id="luogo"></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Location -->
+                <div class="info-section">
+                    <h3>Location</h3>
+                    <table class="details-table">
+                        <tr>
+                            <th>Nome Location:</th>
+                            <td id="locationNome"></td>
+                        </tr>
+                        <tr>
+                            <th>Indirizzo:</th>
+                            <td id="locationIndirizzo"></td>
+                        </tr>
+                        <tr>
+                            <th>Referente:</th>
+                            <td id="locationReferente"></td>
+                        </tr>
+                        <tr>
+                            <th>Dimensioni:</th>
+                            <td id="locationDimensioni"></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Accessibilità -->
+                <div class="info-section">
+                    <h3>Accessibilità</h3>
+                    <table class="details-table">
+                        <tr>
+                            <th>Parcheggio:</th>
+                            <td id="accessibilitaParcheggio"></td>
+                        </tr>
+                        <tr>
+                            <th>Carico/Scarico:</th>
+                            <td id="accessibilitaCarico"></td>
+                        </tr>
+                        <tr>
+                            <th>Ascensori:</th>
+                            <td id="accessibilitaAscensori"></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Piano Lavoro -->
+                <div class="info-section">
+                    <h3>Piano Lavoro</h3>
+                    <table class="details-table">
+                        <tr>
+                            <th>Scarico:</th>
+                            <td id="pianoScarico"></td>
+                        </tr>
+                        <tr>
+                            <th>Montaggio:</th>
+                            <td id="pianoMontaggio"></td>
+                        </tr>
+                        <tr>
+                            <th>Prove:</th>
+                            <td id="pianoProve"></td>
+                        </tr>
+                        <tr>
+                            <th>Evento:</th>
+                            <td id="pianoEvento"></td>
+                        </tr>
+                        <tr>
+                            <th>Smontaggio:</th>
+                            <td id="pianoSmontaggio"></td>
+                        </tr>
+                        <tr>
+                            <th>Ricarico:</th>
+                            <td id="pianoRicarico"></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Dettagli Tecnici -->
+                <div class="info-section">
+                    <h3>Dettagli Tecnici</h3>
+                    
+                    <h4>Video</h4>
+                    <table class="details-table">
+                        <tr>
+                            <th>LED Wall:</th>
+                            <td id="videoLedwall"></td>
+                        </tr>
+                        <tr>
+                            <th>Proiezione:</th>
+                            <td id="videoProiezione"></td>
+                        </tr>
+                        <tr>
+                            <th>Monitor:</th>
+                            <td id="videoMonitor"></td>
+                        </tr>
+                        <tr>
+                            <th>Note:</th>
+                            <td id="videoNote"></td>
+                        </tr>
+                    </table>
+
+                    <h4>Audio</h4>
+                    <table class="details-table">
+                        <tr>
+                            <th>Regia:</th>
+                            <td id="audioRegia"></td>
+                        </tr>
+                        <tr>
+                            <th>PA System:</th>
+                            <td id="audioPa"></td>
+                        </tr>
+                        <tr>
+                            <th>Monitor:</th>
+                            <td id="audioMonitor"></td>
+                        </tr>
+                        <tr>
+                            <th>Note:</th>
+                            <td id="audioNote"></td>
+                        </tr>
+                    </table>
+
+                    <h4>Luci</h4>
+                    <table class="details-table">
+                        <tr>
+                            <th>Mixer:</th>
+                            <td id="luciMixer"></td>
+                        </tr>
+                        <tr>
+                            <th>Piazzato:</th>
+                            <td id="luciPiazzato"></td>
+                        </tr>
+                        <tr>
+                            <th>Teste Mobili:</th>
+                            <td id="luciMotorizzati"></td>
+                        </tr>
+                        <tr>
+                            <th>Note:</th>
+                            <td id="luciNote"></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="actions-container">
+                <button onclick="window.modificaSopralluogo()" class="button">Modifica</button>
+                <button onclick="window.generaPDF()" class="button pdf-button">Genera PDF</button>
+                <button onclick="history.back()" class="button">Torna Indietro</button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2025 Control Stage Event Track - Creato e Sviluppato da Massimiliano Cucaro - Tutti i diritti riservati</p>
+    </footer>
+
+    <script type="module">
+        import { sopralluogoService } from '../../js/services/sopralluogoService.js';
+        import { WORK_ORDER_TYPES } from '../../js/constants/workOrderTypes.js';
+        import { getReferenceValue } from '../../js/utils/referenceUtils.js';
+        import { pdfService } from '../../js/services/pdfService.js';
+
+        let sopralluogoCorrente = null;
+
+        async function loadSopralluogo() {
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+            
+            if (!id) {
+                alert('ID sopralluogo non valido');
+                history.back();
+                return;
+            }
+
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const sopralluogoContainer = document.getElementById('sopralluogoContainer');
+            
+            try {
+                const result = await sopralluogoService.getSopralluogoById(id);
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+
+                sopralluogoCorrente = result.data;
+                
+                // Display basic info
+                document.getElementById('codiceSopralluogo').textContent = sopralluogoCorrente.codice;
+                document.getElementById('eventoNome').textContent = sopralluogoCorrente.evento_nome;
+                document.getElementById('tipoLavoro').textContent = sopralluogoCorrente.tipo_lavoro;
+                
+                // Get reference value based on tipo_lavoro
+                const refValue = getReferenceValue(sopralluogoCorrente, sopralluogoCorrente.tipo_lavoro, WORK_ORDER_TYPES);
+                document.getElementById('riferimento').textContent = refValue || '-';
+                
+                document.getElementById('date').textContent = 
+                    `Dal ${new Date(sopralluogoCorrente.data_inizio).toLocaleDateString()} al ${new Date(sopralluogoCorrente.data_fine).toLocaleDateString()}`;
+                document.getElementById('luogo').textContent = sopralluogoCorrente.luogo;
+
+                // Location info
+                document.getElementById('locationNome').textContent = sopralluogoCorrente.location_nome || '-';
+                document.getElementById('locationIndirizzo').textContent = sopralluogoCorrente.location_indirizzo || '-';
+                document.getElementById('locationReferente').textContent = sopralluogoCorrente.location_referente || '-';
+                document.getElementById('locationDimensioni').textContent = 
+                    `${sopralluogoCorrente.location_lunghezza || '-'} x ${sopralluogoCorrente.location_larghezza || '-'}`;
+
+                // Accessibilità
+                document.getElementById('accessibilitaParcheggio').textContent = sopralluogoCorrente.accessibilita_parcheggio || '-';
+                document.getElementById('accessibilitaCarico').textContent = sopralluogoCorrente.accessibilita_carico_scarico || '-';
+                document.getElementById('accessibilitaAscensori').textContent = sopralluogoCorrente.accessibilita_ascensori || '-';
+
+                // Piano Lavoro
+                document.getElementById('pianoScarico').textContent = sopralluogoCorrente.dati_tecnici_scarico || '-';
+                document.getElementById('pianoMontaggio').textContent = sopralluogoCorrente.dati_tecnici_montaggio || '-';
+                document.getElementById('pianoProve').textContent = sopralluogoCorrente.dati_tecnici_prove || '-';
+                document.getElementById('pianoEvento').textContent = sopralluogoCorrente.dati_tecnici_evento || '-';
+                document.getElementById('pianoSmontaggio').textContent = sopralluogoCorrente.dati_tecnici_smontaggio || '-';
+                document.getElementById('pianoRicarico').textContent = sopralluogoCorrente.dati_tecnici_ricarico || '-';
+
+                // Video
+                document.getElementById('videoLedwall').textContent = formatJsonbField(sopralluogoCorrente.video_ledwall);
+                document.getElementById('videoProiezione').textContent = formatJsonbField(sopralluogoCorrente.video_proiezione);
+                document.getElementById('videoMonitor').textContent = formatJsonbField(sopralluogoCorrente.video_monitor);
+                document.getElementById('videoNote').textContent = sopralluogoCorrente.video_note || '-';
+
+                // Audio
+                document.getElementById('audioRegia').textContent = formatJsonbField(sopralluogoCorrente.audio_regia);
+                document.getElementById('audioPa').textContent = formatJsonbField(sopralluogoCorrente.audio_pa);
+                document.getElementById('audioMonitor').textContent = formatJsonbField(sopralluogoCorrente.audio_monitor);
+                document.getElementById('audioNote').textContent = sopralluogoCorrente.audio_note || '-';
+
+                // Luci
+                document.getElementById('luciMixer').textContent = sopralluogoCorrente.luci_mixer || '-';
+                document.getElementById('luciPiazzato').textContent = formatJsonbField(sopralluogoCorrente.luci_piazzato);
+                document.getElementById('luciMotorizzati').textContent = formatJsonbField(sopralluogoCorrente.luci_motorizzati);
+                document.getElementById('luciNote').textContent = sopralluogoCorrente.luci_note || '-';
+
+                // Set status with appropriate class
+                const statoElement = document.getElementById('statoSopralluogo');
+                statoElement.textContent = sopralluogoCorrente.stato;
+                statoElement.className = `status-badge status-${sopralluogoCorrente.stato.toLowerCase()}`;
+
+                loadingIndicator.style.display = 'none';
+                sopralluogoContainer.style.display = 'block';
+            } catch (error) {
+                console.error('Errore durante il caricamento:', error);
+                alert('Errore durante il caricamento del sopralluogo: ' + error.message);
+                history.back();
+            }
+        }
+
+        function formatJsonbField(field) {
+            if (!field) return '-';
+            try {
+                if (typeof field === 'string') {
+                    field = JSON.parse(field);
+                }
+                return Object.entries(field)
+                    .map(([key, value]) => `${key}: ${value}`)
+                    .join(', ');
+            } catch (error) {
+                return String(field);
+            }
+        }
+
+        // Navigation functions
+        window.modificaSopralluogo = () => {
+            if (sopralluogoCorrente) {
+                window.location.href = `modifica.html?id=${sopralluogoCorrente.id}`;
+            }
+        };
+
+        window.generaPDF = async () => {
+            if (!sopralluogoCorrente) return;
+            try {
+                await pdfService.generateSopralluogoReport(sopralluogoCorrente);
+            } catch (error) {
+                alert('Errore durante la generazione del PDF: ' + error.message);
+            }
+        };
+
+        // Load sopralluogo on page load
+        document.addEventListener('DOMContentLoaded', loadSopralluogo);
+    </script>
+
+    <style>
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .sopralluogo-details {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-section {
+            margin-bottom: 2rem;
+        }
+
+        .info-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-section h3 {
+            color: var(--text-color);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--accent-color);
+        }
+
+        .info-section h4 {
+            color: var(--text-color);
+            margin: 1.5rem 0 1rem;
+            font-size: 1.1rem;
+        }
+
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .details-table th,
+        .details-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .details-table th {
+            width: 200px;
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .actions-container {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-start;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+        }
+
+        .status-bozza { background: #fef3c7; color: #92400e; }
+        .status-completato { background: #d1fae5; color: #065f46; }
+        .status-annullato { background: #fee2e2; color: #991b1b; }
+
+        .pdf-button {
+            background-color: #8b5cf6 !important;
+            color: white !important;
+        }
+        
+        .pdf-button:hover {
+            background-color: #7c3aed !important;
+        }
+    </style>
+</body>
+</html>

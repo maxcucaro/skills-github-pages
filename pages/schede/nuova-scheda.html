@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVENT TRACK - Nuova Scheda Lavoro</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/form.css">
+    <link rel="stylesheet" href="../../css/materiali.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>EVENT TRACK</h1>
+            <p class="tagline">Advanced Solution for Total Control</p>
+        </div>
+    </header>
+
+    <nav class="nav">
+        <div class="nav-container">
+            <ul>
+                <li><a href="../../index.html">Home</a></li>
+                <li><a href="../../schede-lavori.html">Schede Lavori</a></li>
+                <li><a href="../../giacenze.html">Giacenze Inventario</a></li>
+                <li><a href="../../impostazioni.html">Impostazioni</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <h2>Nuova Scheda Lavoro</h2>
+        
+        <div class="form-container">
+            <form id="schedaLavoroForm">
+                <div class="form-group">
+                    <label for="nome" class="required-field">Nome Scheda</label>
+                    <input type="text" id="nome" name="nome" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="tipo_lavoro" class="required-field">Tipo Lavoro</label>
+                    <div class="tipo-lavoro-container">
+                        <select id="tipo_lavoro" name="tipo_lavoro" required>
+                            <option value="">Seleziona tipo</option>
+                        </select>
+                        <div id="shortcutButtons" class="shortcut-buttons"></div>
+                    </div>
+                </div>
+
+                <div class="form-group" data-field="produzione_id" style="display: none;">
+                    <label for="produzione_id" class="required-field">Produzione</label>
+                    <select id="produzione_id" name="produzione_id">
+                        <option value="">Seleziona produzione</option>
+                    </select>
+                </div>
+
+                <div class="form-group" data-field="cliente_id" style="display: none;">
+                    <label for="cliente_id" class="required-field">Cliente</label>
+                    <select id="cliente_id" name="cliente_id">
+                        <option value="">Seleziona cliente</option>
+                    </select>
+                </div>
+
+                <div class="form-group" data-field="cat_id" style="display: none;">
+                    <label for="cat_id" class="required-field">CAT</label>
+                    <select id="cat_id" name="cat_id">
+                        <option value="">Seleziona CAT</option>
+                    </select>
+                </div>
+
+                <div class="form-group" data-field="fornitore_id" style="display: none;">
+                    <label for="fornitore_id" class="required-field">Fornitore</label>
+                    <select id="fornitore_id" name="fornitore_id">
+                        <option value="">Seleziona fornitore</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="data_inizio" class="required-field">Data Inizio</label>
+                    <input type="date" id="data_inizio" name="data_inizio" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="data_fine" class="required-field">Data Fine</label>
+                    <input type="date" id="data_fine" name="data_fine" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="luogo" class="required-field">Luogo</label>
+                    <input type="text" id="luogo" name="luogo" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="responsabile_id">Responsabile</label>
+                    <select id="responsabile_id" name="responsabile_id">
+                        <option value="">Seleziona responsabile</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="note">Note</label>
+                    <textarea id="note" name="note" rows="4"></textarea>
+                </div>
+
+                <!-- Materiali Section -->
+                <div class="info-section">
+                    <h3>Materiali Richiesti</h3>
+                    <div id="materialiContainer"></div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="button">Salva</button>
+                    <button type="button" onclick="history.back()" class="button">Annulla</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2025 Control Stage Event Track - Creato e Sviluppato da Massimiliano Cucaro - Tutti i diritti riservati</p>
+    </footer>
+
+    <script type="module">
+        import { tipologieLavoroService } from '../../js/services/tipologieLavoroService.js';
+        import { FormManager } from '../../js/modules/schedaLavoro/formManager.js';
+        import { createShortcutButtons } from '../../js/components/schedaLavoro/ShortcutButtons.js';
+        import { displayMaterialiSelection } from '../../js/components/materiali/MaterialiSelection.js';
+        import { handleFormSubmit } from '../../js/modules/schedaLavoro/formSubmit.js';
+        import { anagraficheService } from '../../js/services/anagraficheService.js';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Carica i tipi di lavoro
+                const tipoSelect = document.getElementById('tipo_lavoro');
+                const result = await tipologieLavoroService.getTipologieAttive();
+                if (!result.success) throw new Error(result.error);
+
+                result.data.forEach(({ tipo }) => {
+                    const option = document.createElement('option');
+                    option.value = tipo;
+                    switch (tipo) {
+                        case 'INTERNO':
+                            option.textContent = 'Lavoro Interno';
+                            break;
+                        case 'NOLEGGIO':
+                            option.textContent = 'Noleggio';
+                            break;
+                        case 'CONTOVISIONE':
+                            option.textContent = 'Contovisione';
+                            break;
+                        case 'ASSISTENZA':
+                            option.textContent = 'Assistenza Tecnica';
+                            break;
+                        case 'RESO_FORNITORE':
+                            option.textContent = 'Reso a Fornitore';
+                            break;
+                        default:
+                            option.textContent = tipo;
+                    }
+                    tipoSelect.appendChild(option);
+                });
+
+                // Initialize form manager
+                const form = document.getElementById('schedaLavoroForm');
+                const formManager = new FormManager(form);
+                await formManager.init();
+
+                // Setup tipo lavoro change handler
+                const produzioneField = form.querySelector('[data-field="produzione_id"]');
+                const clienteField = form.querySelector('[data-field="cliente_id"]');
+                const catField = form.querySelector('[data-field="cat_id"]');
+                const fornitoreField = form.querySelector('[data-field="fornitore_id"]');
+
+                tipoSelect.addEventListener('change', async (e) => {
+                    // Nascondi tutti i campi
+                    [produzioneField, clienteField, catField, fornitoreField].forEach(field => {
+                        if (field) {
+                            field.style.display = 'none';
+                            const select = field.querySelector('select');
+                            if (select) select.required = false;
+                        }
+                    });
+
+                    // Mostra il campo appropriato in base al tipo
+                    const tipo = e.target.value;
+                    const shortcutContainer = document.getElementById('shortcutButtons');
+                    if (shortcutContainer) {
+                        shortcutContainer.innerHTML = createShortcutButtons(tipo);
+                    }
+
+                    switch (tipo) {
+                        case 'INTERNO':
+                            if (produzioneField) {
+                                produzioneField.style.display = 'block';
+                                const select = produzioneField.querySelector('select');
+                                if (select) {
+                                    select.required = true;
+                                    await loadProduzioni(select);
+                                }
+                            }
+                            break;
+                        case 'NOLEGGIO':
+                        case 'CONTOVISIONE':
+                            if (clienteField) {
+                                clienteField.style.display = 'block';
+                                const select = clienteField.querySelector('select');
+                                if (select) {
+                                    select.required = true;
+                                    await loadClienti(select);
+                                }
+                            }
+                            break;
+                        case 'ASSISTENZA':
+                            if (catField) {
+                                catField.style.display = 'block';
+                                const select = catField.querySelector('select');
+                                if (select) {
+                                    select.required = true;
+                                    await loadCAT(select);
+                                }
+                            }
+                            break;
+                        case 'RESO_FORNITORE':
+                            if (fornitoreField) {
+                                fornitoreField.style.display = 'block';
+                                const select = fornitoreField.querySelector('select');
+                                if (select) {
+                                    select.required = true;
+                                    await loadFornitori(select);
+                                }
+                            }
+                            break;
+                    }
+                });
+
+                // Initialize materiali selection
+                const materialiContainer = document.getElementById('materialiContainer');
+                const materialiSelection = await displayMaterialiSelection(materialiContainer);
+
+                // Handle form submission
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(form);
+                    const materiali = materialiSelection.getSelectedItems();
+                    await handleFormSubmit(form, Object.fromEntries(formData), materiali);
+                };
+
+            } catch (error) {
+                console.error('Errore durante l\'inizializzazione:', error);
+                alert('Errore durante l\'inizializzazione del form: ' + error.message);
+            }
+        });
+
+        // Funzioni per caricare i dati di riferimento
+        async function loadProduzioni(select) {
+            try {
+                const result = await anagraficheService.getProduzioni();
+                if (result.success) {
+                    select.innerHTML = '<option value="">Seleziona produzione</option>';
+                    result.data.forEach(prod => {
+                        if (prod.attivo) {
+                            const option = document.createElement('option');
+                            option.value = prod.id;
+                            option.textContent = prod.nome;
+                            select.appendChild(option);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Errore caricamento produzioni:', error);
+            }
+        }
+
+        async function loadClienti(select) {
+            try {
+                const result = await anagraficheService.getClienti();
+                if (result.success) {
+                    select.innerHTML = '<option value="">Seleziona cliente</option>';
+                    result.data.forEach(cliente => {
+                        if (cliente.attivo) {
+                            const option = document.createElement('option');
+                            option.value = cliente.id;
+                            option.textContent = cliente.ragione_sociale;
+                            select.appendChild(option);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Errore caricamento clienti:', error);
+            }
+        }
+
+        async function loadCAT(select) {
+            try {
+                const result = await anagraficheService.getCAT();
+                if (result.success) {
+                    select.innerHTML = '<option value="">Seleziona CAT</option>';
+                    result.data.forEach(cat => {
+                        if (cat.attivo) {
+                            const option = document.createElement('option');
+                            option.value = cat.id;
+                            option.textContent = `${cat.nome} ${cat.cognome}`;
+                            select.appendChild(option);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Errore caricamento CAT:', error);
+            }
+        }
+
+        async function loadFornitori(select) {
+            try {
+                const result = await anagraficheService.getFornitori();
+                if (result.success) {
+                    select.innerHTML = '<option value="">Seleziona fornitore</option>';
+                    result.data.forEach(fornitore => {
+                        if (fornitore.attivo) {
+                            const option = document.createElement('option');
+                            option.value = fornitore.id;
+                            option.textContent = fornitore.ragione_sociale;
+                            select.appendChild(option);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Errore caricamento fornitori:', error);
+            }
+        }
+    </script>
+
+    <style>
+        .form-section {
+            margin-bottom: 2rem;
+            padding: 2rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-section h3 {
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+            font-size: 1.25rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--accent-color);
+        }
+
+        .form-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+        }
+
+        .required-field::after {
+            content: "*";
+            color: #ef4444;
+            margin-left: 0.25rem;
+        }
+
+        .tipo-lavoro-container {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .tipo-lavoro-container select {
+            flex: 1;
+        }
+
+        .shortcut-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .shortcut-buttons .button {
+            white-space: nowrap;
+        }
+
+        .info-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .info-section h3 {
+            margin-bottom: 1rem;
+            color: var(--text-color);
+            font-size: 1.25rem;
+        }
+    </style>
+</body>
+</html>
